@@ -1,0 +1,18 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/christopherchan/create_ws/devel/include",
+        "/home/christopherchan/autoronto_ws/devel/include",
+        "/opt/ros/kinetic/include",
+        "/home/christopherchan/create_ws/src/create_autonomy/ca_driver/include",
+        "/usr/include"
+      ],
+      "name": "Linux"
+    }
+  ]
+}
