@@ -122,28 +122,6 @@ class ImageConverter:
                 dist_error = 1.0 - dist_to_target
                 self.pubCmdVel(x_error, dist_error)
 
-    
-            # # print(bbox,self.recent_depth_image.shape)
-            # min_x_index = max(0,int(bbox[0]))
-            # max_x_index = min(self.recent_depth_image.shape[1],int(bbox[0]+bbox[2]))
-            # min_y_index = max(0,int(bbox[1]))
-            # max_y_index = min(self.recent_depth_image.shape[0],int(bbox[1]+bbox[3]))
-            # for x in range(min_x_index, max_x_index-1):
-            #     for y in range(min_y_index, max_y_index-1):
-            #         if not math.isnan(self.recent_depth_image[y,x]):
-            #             sum_dist_to_target += self.recent_depth_image[y,x]
-            #             num_of_non_nan_elements += 1
-            # if num_of_non_nan_elements != 0:
-            #     dist_to_target = sum_dist_to_target / float(num_of_non_nan_elements)
-            
-            # if not math.isnan(dist_to_target):
-            #     print("Depth image reading ", dist_to_target)
-            #     print("Centroid of Object at: ", int(c_y), int(c_x))
-
-            #     x_error = pixel_target[0] - int(c_x)
-            #     dist_error = 1.0 - dist_to_target
-            #     self.pubCmdVel(x_error, dist_error)
-
         else:
 
             green_lower = (20, 100, 100)
@@ -161,26 +139,16 @@ class ImageConverter:
                 # it to compute the minimum enclosing circle and
                 # centroid
                 c = max(cnts, key=cv2.contourArea)
-                # ((x, y), radius) = cv2.minEnclosingCircle(c)
-                
-                # M = cv2.moments(c)
-                # center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-
                 x,y,w,h = cv2.boundingRect(c)
                 center = (x + w/2, y + h/2)
 
                 # only proceed if the radius meets a minimum size
                 if w*h > 100:
-                    #bbox = (int(x-radius/2), int(y-radius/2), int(radius*2), int(radius*2))
                     bbox = (x,y,w,h)
                     # Initialize tracker with first frame and bounding box
                     self.initializeTracker()
                     ok = self.tracker.init(frame, bbox)
                     self.tracker_initialized = True
-
-        
-
-         
 
         cv2.imshow("Image window", frame)
         cv2.waitKey(3)
