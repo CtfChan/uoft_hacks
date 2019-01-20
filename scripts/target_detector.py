@@ -80,51 +80,6 @@ class ImageConverter:
         except CvBridgeError as e:
             print(e)
 
-        # (rows,cols,channels) = cv_image.shape
-
-        # green_lower = (20, 100, 100)
-        # green_upper = (64, 255, 255)
-
-        # hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-        # mask = cv2.inRange(hsv, green_lower, green_upper)
-        # mask = cv2.erode(mask, None, iterations=2)
-        # mask = cv2.dilate(mask, None, iterations=2)
-        # cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-        # cnts = imutils.grab_contours(cnts)
-        # center = None
-        
-        # if len(cnts) > 0:
-        #     # find the largest contour in the mask, then use
-        #     # it to compute the minimum enclosing circle and
-        #     # centroid
-        #     c = max(cnts, key=cv2.contourArea)
-        #     ((x, y), radius) = cv2.minEnclosingCircle(c)
-        #     M = cv2.moments(c)
-        #     center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-    
-        #     # only proceed if the radius meets a minimum size
-        #     if radius > 10:
-        #         # draw the circle and centroid on the frame,
-        #         # then update the list of tracked points
-        #         cv2.circle(cv_image, (int(x), int(y)), int(radius),
-        #         (0, 255, 255), 2)
-        #         cv2.circle(cv_image, center, 5, (0, 0, 255), -1)
-
-        #         # #compute distance to centroid
-        #         # z_metric = float(self.recent_depth_image[int(y), int(x)]) * 0.00001
-        #         # pt_x = z_metric * ((x - self.cx) * self.inv_fx)
-        #         # pt_y = z_metric * ((y - self.cy) * self.inv_fy)
-        #         # pt_z = z_metric
-
-        #         dist_to_target = self.recent_depth_image[int(y), int(x)]
-        #         print("Depth image reading ", dist_to_target)
-        #         print("Centroid of Object at: ", int(y), int(x))
-
-        #         x_error = pixel_target[0] - int(x)
-        #         dist_error = 1.0 - dist_to_target
-        #         self.pubCmdVel(x_error, dist_error)
-
-
         frame = cv_image
         if self.tracker_initialized:
 
@@ -145,33 +100,87 @@ class ImageConverter:
             # Display tracker type on frame
             cv2.putText(frame, self.tracker_type + " Tracker", (100,20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (50,170,50),2)
 
-            x = bbox[0] + bbox[2] / 2
-            y = bbox[1] + bbox[3] / 2
-            dist_to_target = self.recent_depth_image[int(y), int(x)]
-            print("Depth image reading ", dist_to_target)
-            print("Centroid of Object at: ", int(y), int(x))
+            c_x = int(bbox[0]) + int(bbox[2] / 2.0) 
+            c_y = int(bbox[1]) + int(bbox[3] / 2.0)
 
-            x_error = pixel_target[0] - int(x)
-            dist_error = 1.0 - dist_to_target
-            self.pubCmdVel(x_error, dist_error)
+
+            sum_dist_to_target = 0.0
+            num_of_non_nan_elements = 0.0
+            for x in range(c_x - 5, c_x + 5 + 1 ):
+                for y in range(c_y - 5, c_y + 5 + 1 ):
+                    if y >= 0 and y < frame.shape[0] and x >= 0 and x < frame.shape[1]:
+                        if self.recent_depth_image[y,x]:
+                            sum_dist_to_target += float(self.recent_depth_image[y,x])
+                            num_of_non_nan_elements += 1.0
+            
+            if num_of_non_nan_elements != 0:
+                dist_to_target = sum_dist_to_target / float(num_of_non_nan_elements)
+                print("Depth image reading ", dist_to_target)
+                print("Centroid of Object at: ", int(c_y), int(c_x))
+
+                x_error = pixel_target[0] - int(c_x)
+                dist_error = 1.0 - dist_to_target
+                self.pubCmdVel(x_error, dist_error)
+
+    
+            # # print(bbox,self.recent_depth_image.shape)
+            # min_x_index = max(0,int(bbox[0]))
+            # max_x_index = min(self.recent_depth_image.shape[1],int(bbox[0]+bbox[2]))
+            # min_y_index = max(0,int(bbox[1]))
+            # max_y_index = min(self.recent_depth_image.shape[0],int(bbox[1]+bbox[3]))
+            # for x in range(min_x_index, max_x_index-1):
+            #     for y in range(min_y_index, max_y_index-1):
+            #         if not math.isnan(self.recent_depth_image[y,x]):
+            #             sum_dist_to_target += self.recent_depth_image[y,x]
+            #             num_of_non_nan_elements += 1
+            # if num_of_non_nan_elements != 0:
+            #     dist_to_target = sum_dist_to_target / float(num_of_non_nan_elements)
+            
+            # if not math.isnan(dist_to_target):
+            #     print("Depth image reading ", dist_to_target)
+            #     print("Centroid of Object at: ", int(c_y), int(c_x))
+
+            #     x_error = pixel_target[0] - int(c_x)
+            #     dist_error = 1.0 - dist_to_target
+            #     self.pubCmdVel(x_error, dist_error)
+
         else:
 
-            gray = cv2.cvtColor(cv_image,cv2.COLOR_BGR2GRAY)		
-            face_cascade=cv2.CascadeClassifier('/home/christopherchan/create_ws/src/create2_experiments/scripts/haarcascade_frontalface_default.xml')
-            faces = face_cascade.detectMultiScale(gray,scaleFactor=1.1,minNeighbors=5,minSize=(30, 30),flags=cv2.CASCADE_SCALE_IMAGE)
+            green_lower = (20, 100, 100)
+            green_upper = (64, 255, 255)
+            hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, green_lower, green_upper)
+            mask = cv2.erode(mask, None, iterations=2)
+            mask = cv2.dilate(mask, None, iterations=2)
+            cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            center = None
+
+            if len(cnts) > 0:
+                # find the largest contour in the mask, then use
+                # it to compute the minimum enclosing circle and
+                # centroid
+                c = max(cnts, key=cv2.contourArea)
+                # ((x, y), radius) = cv2.minEnclosingCircle(c)
+                
+                # M = cv2.moments(c)
+                # center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+                x,y,w,h = cv2.boundingRect(c)
+                center = (x + w/2, y + h/2)
+
+                # only proceed if the radius meets a minimum size
+                if w*h > 100:
+                    #bbox = (int(x-radius/2), int(y-radius/2), int(radius*2), int(radius*2))
+                    bbox = (x,y,w,h)
+                    # Initialize tracker with first frame and bounding box
+                    self.initializeTracker()
+                    ok = self.tracker.init(frame, bbox)
+                    self.tracker_initialized = True
+
         
-            # for (x,y,w,h) in faces:
-            #     cv2.rectangle(cv_image,(x,y),(x+w,y+h),(255,0,0),2)
-            # Define an initial bounding box
-            if len(faces) != 0:
-                bbox = tuple(faces[0])
-                # print(faces[0])
 
-                # Initialize tracker with first frame and bounding box
-                self.initializeTracker()
-                ok = self.tracker.init(frame, bbox)
-                self.tracker_initialized = True
-
+         
 
         cv2.imshow("Image window", frame)
         cv2.waitKey(3)
@@ -180,7 +189,8 @@ class ImageConverter:
             self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
         except CvBridgeError as e:
             print(e)
-    
+
+
     def pubCmdVel(self, x_error, dist_error):
         msg = Twist()
         if (x_error > 30):
